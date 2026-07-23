@@ -2,6 +2,19 @@
 
 Useful AI skills
 
+## Codex 全局规则
+
+[`rules/AGENTS.md`](rules/AGENTS.md) 保存了一份可重复使用的 Codex 全局规则，用于统一沟通方式、修改边界、安全约束和验证要求。
+
+在仓库根目录运行以下命令即可应用：
+
+```bash
+mkdir -p ~/.codex
+cp ./rules/AGENTS.md ~/.codex/AGENTS.md
+```
+
+该命令会覆盖已有的全局 `AGENTS.md`，如有自定义内容请先备份或合并。新建 Codex 任务后规则生效；项目特有的约定仍应放在对应仓库的 `AGENTS.md` 中。
+
 ## 管理 Skills 的方式
 
 ### 一、Skills 只装在项目里，不装全局
