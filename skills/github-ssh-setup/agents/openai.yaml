@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub SSH Setup"
+  short_description: "Safely configure GitHub SSH on a new computer"
+  default_prompt: "Use $github-ssh-setup to configure and verify GitHub SSH access on this computer."

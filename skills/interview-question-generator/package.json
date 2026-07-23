@@ -1,0 +1,1 @@
+{"name":"interview-question-generator","version":"0.3.0","description":"Use when conducting technical interviews for master's degree candidates. Triggers include reviewing resumes, preparing interview questions, generating customized CS fundamentals questions based on candidate background.","publishConfig":{"registry":"https://contextlab.alibaba-inc.com/skill"}}
