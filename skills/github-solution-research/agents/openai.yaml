@@ -1,0 +1,6 @@
+interface:
+  display_name: "GitHub 开源方案调研"
+  short_description: "检索并核验 GitHub 同类开源项目，比较成熟设计、依赖与维护情况"
+  default_prompt: "使用 $github-solution-research，为我准备实现的功能调研同类开源项目，比较设计、依赖和已知问题，并给出有证据的推荐。"
+policy:
+  allow_implicit_invocation: true
