@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'">
+  <title>缓存如何缩短读取路径</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px; background: #e3e6e6; }
+    #diagram { width: 1600px; height: 900px; background: var(--paper); color: var(--ink); }
+    [data-style="blueprint"] {
+      --paper: #faf8f5; --ink: #24364b; --muted: #51647a; --accent: #2563eb;
+      --secondary: #235977; --line: #93a9c3; --fill: #edf3fc; --grid: #dce2e8;
+      --warning: #a75512; --faint: #e9e2d7;
+    }
+    [data-style="chalkboard"] {
+      --paper: #1c2b25; --ink: #f2f0df; --muted: #c4d0c3; --accent: #ffe08a;
+      --secondary: #96cbe8; --line: #a1b9aa; --fill: #24372f; --grid: transparent;
+      --warning: #f3acb5; --faint: #35453c;
+    }
+    svg { display: block; width: 100%; height: 100%; }
+    text { fill: var(--ink); font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; }
+    .eyebrow { font-size: 18px; font-weight: 600; letter-spacing: 3px; fill: var(--accent); }
+    .title { font-size: 52px; font-weight: 700; letter-spacing: -1px; }
+    .subtitle { font-size: 24px; fill: var(--muted); }
+    .node-name { font-size: 29px; font-weight: 600; }
+    .node-detail { font-size: 22px; fill: var(--muted); }
+    .label { font-size: 21px; fill: var(--accent); paint-order: stroke; stroke: var(--paper); stroke-width: 10px; stroke-linejoin: round; }
+    .note { font-size: 23px; fill: var(--muted); }
+    .note-title { font-size: 25px; font-weight: 600; fill: var(--accent); }
+    .outline { fill: var(--fill); stroke: var(--accent); stroke-width: 2.5; }
+    .edge { fill: none; stroke: var(--accent); stroke-width: 2.5; marker-end: url(#arrow); }
+    .slow { stroke: var(--secondary); marker-end: url(#arrow-secondary); }
+    .boundary { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 7 9; }
+    .rule { stroke: var(--line); stroke-width: 1; }
+    .chalk-only { display: none; }
+    [data-style="chalkboard"] .chalk-only { display: block; }
+    [data-style="chalkboard"] .sketch { filter: url(#chalk-grain); stroke-linecap: round; stroke-linejoin: round; }
+    [data-style="chalkboard"] .outline { stroke-width: 3; }
+    [data-style="chalkboard"] .title { font-family: "Kaiti SC", "STKaiti", "KaiTi", "PingFang SC", serif; }
+    [data-style="chalkboard"] .eyebrow { letter-spacing: 1px; }
+    @media print { body { padding: 0; background: transparent; } }
+  </style>
+</head>
+<body>
+<!-- 修改 data-style 可预览另一种风格；正式绘图时重写示例内容与坐标。 -->
+<main id="diagram" data-style="blueprint" aria-label="缓存读取流程图">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="svg-title svg-desc">
+    <title id="svg-title">缓存如何缩短读取路径</title>
+    <desc id="svg-desc">应用先查缓存。命中后直接返回；未命中则查询数据库，回填缓存后返回结果。</desc>
+    <defs>
+      <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+        <path d="M32 0H0V32" fill="none" stroke="var(--grid)" stroke-width="0.65"/>
+      </pattern>
+      <marker id="arrow" viewBox="0 0 12 10" refX="11" refY="5" markerWidth="10" markerHeight="9" orient="auto-start-reverse">
+        <path d="M1 1L11 5L1 9" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+      </marker>
+      <marker id="arrow-secondary" viewBox="0 0 12 10" refX="11" refY="5" markerWidth="10" markerHeight="9" orient="auto">
+        <path d="M1 1L11 5L1 9" fill="none" stroke="var(--secondary)" stroke-width="1.6"/>
+      </marker>
+      <filter id="chalk-grain" x="-4%" y="-8%" width="108%" height="116%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.11" numOctaves="2" seed="7" result="grain"/>
+        <feDisplacementMap in="SourceGraphic" in2="grain" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+    <rect width="1600" height="900" fill="var(--paper)"/>
+    <rect width="1600" height="900" fill="url(#grid)"/>
+    <g class="chalk-only" opacity="0.22" fill="none" stroke="var(--faint)" stroke-linecap="round">
+      <path d="M87 230Q680 210 1500 238M110 247Q740 231 1430 256" stroke-width="17"/>
+      <path d="M100 829Q450 809 712 827M1120 97L1490 110" stroke-width="10"/>
+    </g>
+    <text x="80" y="79" class="eyebrow">系统原理 / 读取路径</text>
+    <text x="80" y="151" class="title">缓存如何缩短读取路径</text>
+    <text x="82" y="199" class="subtitle">把常用结果放在更近的位置，减少对数据库的重复访问。</text>
+    <line x1="80" y1="232" x2="1520" y2="232" class="rule"/>
+    <rect x="445" y="280" width="1075" height="366" rx="8" class="boundary sketch"/>
+    <text x="470" y="317" class="node-detail">服务端读取</text>
+    <!-- 连线先于节点绘制。 -->
+    <g class="sketch">
+      <path d="M350 400H490" class="edge"/>
+      <path d="M770 400H850" class="edge"/>
+      <path d="M1120 400H1230" class="edge"/>
+      <path d="M930 454V527" class="edge slow"/>
+      <path d="M1120 574H1370V454" class="edge slow"/>
+      <path d="M1040 527V454" class="edge slow" stroke-dasharray="7 7"/>
+    </g>
+    <g data-node>
+      <rect data-node-box x="80" y="346" width="270" height="108" rx="4" class="outline sketch"/>
+      <text x="215" y="391" text-anchor="middle" class="node-name">发起请求</text>
+      <text x="215" y="428" text-anchor="middle" class="node-detail">读取同一份数据</text>
+    </g>
+    <g data-node>
+      <rect data-node-box x="490" y="346" width="280" height="108" rx="4" class="outline sketch"/>
+      <text x="630" y="391" text-anchor="middle" class="node-name">应用服务</text>
+      <text x="630" y="428" text-anchor="middle" class="node-detail">优先查询缓存</text>
+    </g>
+    <g data-node>
+      <rect data-node-box x="850" y="346" width="270" height="108" rx="4" class="outline sketch"/>
+      <text x="985" y="391" text-anchor="middle" class="node-name">缓存</text>
+      <text x="985" y="428" text-anchor="middle" class="node-detail">保留热点结果</text>
+    </g>
+    <g data-node>
+      <rect data-node-box x="1230" y="346" width="280" height="108" rx="4" class="outline sketch"/>
+      <text x="1370" y="391" text-anchor="middle" class="node-name">返回结果</text>
+      <text x="1370" y="428" text-anchor="middle" class="node-detail">完成本次读取</text>
+    </g>
+    <g data-node>
+      <rect data-node-box x="850" y="527" width="270" height="94" rx="4" class="outline sketch" style="stroke:var(--secondary)"/>
+      <text x="985" y="567" text-anchor="middle" class="node-name">数据库</text>
+      <text x="985" y="602" text-anchor="middle" class="node-detail">查询原始记录</text>
+    </g>
+    <text x="397" y="381" text-anchor="middle" class="label">请求</text>
+    <text x="1174" y="381" text-anchor="middle" class="label">命中</text>
+    <text x="838" y="498" class="label" style="fill:var(--secondary)">未命中</text>
+    <text x="1195" y="554" class="label" style="fill:var(--secondary)">返回</text>
+    <text x="1060" y="498" class="label" style="fill:var(--secondary)">回填缓存</text>
+    <text x="467" y="684" class="node-detail">实线：读取路径　虚线：回填动作　查询与回填均由应用服务执行</text>
+    <line x1="80" y1="730" x2="1520" y2="730" class="rule"/>
+    <text x="82" y="779" class="note-title">关键收益</text>
+    <text x="82" y="819" class="note">缓存命中时，读取路径跳过数据库。</text>
+    <text x="850" y="779" class="note-title" style="fill:var(--warning)">需要权衡</text>
+    <text x="850" y="819" class="note">速度提升伴随过期策略与一致性成本。</text>
+    <path d="M80 173Q370 185 686 174" class="chalk-only sketch" fill="none" stroke="var(--accent)" stroke-width="2.5" opacity="0.45"/>
+  </svg>
+</main>
+</body>
+</html>

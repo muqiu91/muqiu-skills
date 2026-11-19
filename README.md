@@ -15,6 +15,16 @@ cp ./rules/AGENTS.md ~/.codex/AGENTS.md
 
 该命令会覆盖已有的全局 `AGENTS.md`，如有自定义内容请先备份或合并。新建 Codex 任务后规则生效；项目特有的约定仍应放在对应仓库的 `AGENTS.md` 中。
 
+## 绘制图解
+
+[`skills/draw-diagram`](skills/draw-diagram/SKILL.md) 将文字、代码或材料绘制为架构图、流程图或知识图解，首版支持浅色工程蓝图 `blueprint` 和粉笔黑板 `chalkboard`。
+
+默认先生成可编辑、离线可用的 HTML，展示预览并等待确认，再导出 2 倍分辨率 PNG。PNG 导出需要 Node.js 22.4+ 与本机 Chrome/Chromium/Edge，无额外 npm 包依赖。
+
+使用示例：
+
+> 用 draw-diagram 把缓存读取流程画成 chalkboard 风格，先给我 HTML 预览，确认后再导出 PNG。
+
 ## 管理 Skills 的方式
 
 ### 一、Skills 只装在项目里，不装全局
