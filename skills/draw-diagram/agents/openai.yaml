@@ -1,4 +1,4 @@
 interface:
   display_name: "图解绘制"
-  short_description: "用蓝图或黑板风格绘制中文图解，先预览 HTML，确认后再导出高清 PNG"
-  default_prompt: "请用 $draw-diagram 把这段内容画成 blueprint 风格图解，先生成 HTML 给我预览，确认后再导出 PNG。"
+  short_description: "用蓝图或黑板风格绘制中文图解，先预览 HTML，确认后默认导出高质量 JPEG"
+  default_prompt: "请用 $draw-diagram 把这段内容画成 blueprint 风格图解，先生成 HTML 给我预览，确认后导出高质量 JPEG；PNG 按需导出。"

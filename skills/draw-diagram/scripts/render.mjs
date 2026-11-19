@@ -4,12 +4,32 @@ import { spawn } from 'node:child_process';
 import { constants } from 'node:fs';
 import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { delimiter, dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, extname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
 const timeoutMs = 15000;
+const jpegQuality = 90;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function imageSize(data, format) {
+  if (format === 'png' && data.length >= 24 && data.subarray(0, 8).toString('hex') === '89504e470d0a1a0a') {
+    return { pixelWidth: data.readUInt32BE(16), pixelHeight: data.readUInt32BE(20) };
+  }
+  if (format === 'jpeg' && data.length >= 4 && data.readUInt16BE(0) === 0xffd8 && data.readUInt16BE(data.length - 2) === 0xffd9) {
+    for (let offset = 2; offset + 9 < data.length;) {
+      if (data[offset] !== 0xff) break;
+      const marker = data[offset + 1];
+      const length = data.readUInt16BE(offset + 2);
+      if (length < 2 || offset + 2 + length > data.length) break;
+      if ([0xc0, 0xc1, 0xc2].includes(marker) && length >= 8) {
+        return { pixelWidth: data.readUInt16BE(offset + 7), pixelHeight: data.readUInt16BE(offset + 5) };
+      }
+      offset += length + 2;
+    }
+  }
+  throw new Error(`浏览器未返回有效 ${format.toUpperCase()} 图像`);
+}
 
 async function findBrowser(explicit) {
   const candidates = explicit ? [resolve(explicit)] : [
@@ -130,7 +150,7 @@ async function main() {
     },
   });
   if (values.help) {
-    console.log('用法：node render.mjs <图解.html> [--check | --output 图解.png] [--scale 1..4] [--browser 路径]\n不带 --output 时仅检查；PNG 输出路径必须尚不存在。');
+    console.log('用法：node render.mjs <图解.html> [--check | --output 图解.jpg] [--scale 1..4] [--browser 路径]\n不带 --output 时仅检查；推荐 .jpg/.jpeg（质量 90），按需使用 .png；输出路径必须尚不存在。');
     return;
   }
   if (positionals.length !== 1) throw new Error('请指定一个本地 HTML 文件；用 --help 查看用法。');
@@ -141,8 +161,10 @@ async function main() {
   const input = resolve(positionals[0]);
   await access(input, constants.R_OK);
   const output = values.output ? resolve(values.output) : null;
+  const extension = output ? extname(output).toLowerCase() : null;
+  const format = extension === '.png' ? 'png' : ['.jpg', '.jpeg'].includes(extension) ? 'jpeg' : null;
   if (output) {
-    if (!output.toLowerCase().endsWith('.png')) throw new Error('输出文件必须以 .png 结尾');
+    if (!format) throw new Error('输出文件必须以 .jpg、.jpeg 或 .png 结尾');
     try { await access(output); throw new Error('输出文件已存在，请选择新文件名'); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
@@ -202,16 +224,15 @@ async function main() {
     const result = { ok: true, input, style: report.style, width: report.width, height: report.height };
     if (output) {
       const capture = await send('Page.captureScreenshot', {
-        format: 'png', captureBeyondViewport: true, clip: { ...report.clip, scale },
+        format, ...(format === 'jpeg' ? { quality: jpegQuality } : {}),
+        captureBeyondViewport: true, clip: { ...report.clip, scale },
       });
-      const png = Buffer.from(capture.data, 'base64');
-      if (png.length < 24 || png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error('浏览器未返回有效 PNG');
-      const pixelWidth = png.readUInt32BE(16);
-      const pixelHeight = png.readUInt32BE(20);
-      if (Math.abs(pixelWidth - report.width * scale) > 1 || Math.abs(pixelHeight - report.height * scale) > 1) throw new Error('PNG 尺寸与画布不一致');
+      const image = Buffer.from(capture.data, 'base64');
+      const { pixelWidth, pixelHeight } = imageSize(image, format);
+      if (Math.abs(pixelWidth - report.width * scale) > 1 || Math.abs(pixelHeight - report.height * scale) > 1) throw new Error('图像尺寸与画布不一致');
       await mkdir(dirname(output), { recursive: true });
-      await writeFile(output, png, { flag: 'wx' });
-      Object.assign(result, { output, scale, pixelWidth, pixelHeight });
+      await writeFile(output, image, { flag: 'wx' });
+      Object.assign(result, { output, format, ...(format === 'jpeg' ? { quality: jpegQuality } : {}), scale, pixelWidth, pixelHeight, bytes: image.length });
     }
     console.log(JSON.stringify(result, null, 2));
   } finally {
