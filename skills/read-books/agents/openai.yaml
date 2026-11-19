@@ -1,4 +1,0 @@
-interface:
-  display_name: "通用阅读伴侣"
-  short_description: "为任意书籍制定阅读路线，提供读中陪伴、进度调整与读后复盘"
-  default_prompt: "使用 $read-books 为我手上的这本书制作一页阅读卡，并规划后续陪读。"
